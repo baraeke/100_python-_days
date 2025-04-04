@@ -4,74 +4,74 @@ import pandas
 FONT = ("Courier", 16, "bold")
 correct_guess = 0
 guessed_states = []
-wants_play_again = True
 
 # Screen setup
 screen = turtle.Screen()
 screen.title("U.S. States Game")
-map = "blank_states_img.gif"
-screen.addshape(map)
-turtle.shape(map)
+map_image = "blank_states_img.gif"
+screen.addshape(map_image)
+turtle.shape(map_image)
 
+# Scoreboard turtle
 scoreboard = turtle.Turtle()
 scoreboard.hideturtle()
 scoreboard.penup()
 
+# Read states data
 data = pandas.read_csv("50_states.csv")
 list_of_states = data["state"].tolist()
 
-i = 0
-while i < len(list_of_states) and wants_play_again:
-    answer_state = screen.textinput(title=f"{correct_guess}/{len(list_of_states)} States Correct", prompt="Make another guess or type 'Exit' to quit").title()
+# Game loop
+while len(guessed_states) < len(list_of_states):
+    answer_state = screen.textinput(
+        title=f"{correct_guess}/{len(list_of_states)} States Correct",
+        prompt="What's another state's name? (or type 'Exit' to quit)"
+    )
     
+    if not answer_state:
+        continue
+    
+    answer_state = answer_state.title()
+
     if answer_state == "Exit":
-        wants_play_again = False
-        scoreboard.goto(x=0, y=0)
-        scoreboard.write(arg=f"YOU QUITED", align="center", font=("Courier", 20, "bold"), move=False)
-        scoreboard.goto(x=0, y=-30)
-        scoreboard.write(arg=f"You were able to guess {correct_guess} states", align="center", font=("Courier", 16, "bold"), move=False)
         break
-    
+
     if answer_state in list_of_states and answer_state not in guessed_states:
         state_data = data[data.state == answer_state]
-        xcor = int(state_data["x"].iloc[0])
-        ycor = int(state_data["y"].iloc[0])
+        xcor, ycor = int(state_data.x), int(state_data.y)
         scoreboard.pencolor("green")
         scoreboard.goto(x=xcor, y=ycor)
-        scoreboard.write(arg=f"{answer_state}", align="center", font=FONT, move=False)
+        scoreboard.write(answer_state, align="center", font=FONT)
         guessed_states.append(answer_state)
         correct_guess += 1
-        i += 1
-    
-    if i == len(list_of_states):
-        scoreboard.goto(x=0, y=0)
-        scoreboard.write(arg=f"YOU DID IT", align="center", font=("Courier", 20, "bold"), move=False)
-        scoreboard.goto(x=0, y=-30)
-        scoreboard.write(arg=f"You guessed all states right", align="center", font=("Courier", 16, "bold"), move=False)
 
+# Game Over Message
+scoreboard.goto(0, 0)
+if len(guessed_states) == len(list_of_states):
+    scoreboard.write("YOU DID IT!", align="center", font=("Courier", 20, "bold"))
+    scoreboard.goto(0, -30)
+    scoreboard.write("You guessed all states right!", align="center", font=FONT)
+else:
+    scoreboard.write("YOU QUIT!", align="center", font=("Courier", 20, "bold"))
+    scoreboard.goto(0, -30)
+    scoreboard.write(f"You guessed {correct_guess} states.", align="center", font=FONT)
 
-answer_state = screen.textinput(title=f"Do you want to view the unguessed states?", prompt="Enter 'yes' to view").lower()
-
-states_to_learn = []
-x = []
-y = []
-for state in list_of_states:
-    if state not in guessed_states:
+# Offer to show unguessed states
+if screen.textinput(title="Review", prompt="View unguessed states? Type 'yes' to view:").lower() == "yes":
+    states_to_learn = [state for state in list_of_states if state not in guessed_states]
+    for state in states_to_learn:
         state_data = data[data.state == state]
-        states_to_learn.append(state)
-        x.append(int(state_data["x"].iloc[0]))
-        y.append(int(state_data["y"].iloc[0]))
-        if answer_state == "yes":
-            scoreboard.pencolor("red")
-            scoreboard.goto(x=int(state_data["x"].iloc[0]), y=int(state_data["y"].iloc[0]))
-            scoreboard.write(arg=f"{state}", align="center", font=("Courier", 10, "normal"), move=False)
+        xcor, ycor = int(state_data.x), int(state_data.y)
+        scoreboard.pencolor("red")
+        scoreboard.goto(xcor, ycor)
+        scoreboard.write(state, align="center", font=("Courier", 10, "normal"))
 
-data = {
-    "state": states_to_learn,
-    "x": x,
-    "y": y,
-}
-df = pandas.DataFrame(data)
-df.to_csv("state_to_learn.csv", index=False)
+    # Save unguessed states
+    data_dict = {
+        "state": states_to_learn,
+        "x": [int(data[data.state == s].x) for s in states_to_learn],
+        "y": [int(data[data.state == s].y) for s in states_to_learn]
+    }
+    pandas.DataFrame(data_dict).to_csv("states_to_learn.csv", index=False)
 
 screen.exitonclick()
